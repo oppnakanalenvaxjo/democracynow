@@ -1,0 +1,108 @@
+#!/bin/bash
+
+# Script to check an RSS feed for todays episode, download and process it
+
+if [ ! -d /tmp/democracynow ]; then
+	mkdir /tmp/democracynow
+fi
+
+if [ ! -d /tmp/demodone ]; then
+	mkdir /tmp/demodone
+fi
+
+wget -P /tmp http://democracynow.org/podcast-stations-mpeg.xml
+
+XMLFEED=$(cat /tmp/podcast-stations-mpeg.xml)
+LATEST_DATE=$(echo "$XMLFEED" | grep -m 1 "pubDate")
+LATEST_DATE=${LATEST_DATE:9:16}
+LATEST_URL=$(echo "$XMLFEED" | grep -m 1 "enclosure" | cut -d " " -f 2)
+LATEST_URL=${LATEST_URL#url=\"}
+LATEST_URL=${LATEST_URL%\"}
+TODAY=$(date +'%a, %d %b %Y')
+NAMEDATE=$(date +'%y%m%d')
+
+echo "today: $TODAY"
+echo "date: $LATEST_DATE"
+echo "url: $LATEST_URL"
+
+MAX_WIDTH=1024
+MAX_HEIGHT=576
+END_WIDTH=720
+END_HEIGHT=576
+
+AV_RESOLUTION="-s:v "$END_WIDTH"x"$END_HEIGHT
+
+AV_VCODEC="-vcodec libx264 -vprofile high -x264-params level=40:bitrate=6144 -flags:v +ilme+ildct"
+AV_ACODEC="-acodec libfdk_aac -b:a 384k"
+AV_FPS="-r 25"
+AV_ASPECT="-aspect 16:9"
+AV_RATE="-ar 48000"
+
+AV_FILTER="-filter:v crop=out_h=in_h-2*60,scale=iw*sar*min($MAX_WIDTH/(iw*sar)\,$MAX_HEIGHT/ih):ih*min($MAX_WIDTH/(iw*sar)\,$MAX_HEIGHT/ih),pad=$MAX_WIDTH:$MAX_HEIGHT:(ow-iw)/2:(oh-ih)/2"
+
+OUTNAME="dn"$NAMEDATE".mp4"
+OUTPATH="/tmp/demodone/"$OUTNAME
+TMP_VIDEO=$(mktemp -u)
+TMP_VIDEO=$TMP_VIDEO"-dn.mp4"
+TMP_AUDIO_IN=$(mktemp -u)
+TMP_AUDIO_IN=$TMP_AUDIO_IN"-dn.wav"
+TMP_AUDIO_OUT=$(basename "$TMP_AUDIO_IN")
+TMP_AUDIO_OUT="/tmp/demotmp/"$TMP_AUDIO_OUT
+FINALPATH="/caspar/"$OUTNAME
+NOW=$(date +"%Y-%m-%d %H:%M:%S")
+LOGFILE="/share/dnlog.log"
+DOWNLOAD=$(ls /tmp/democracynow)
+
+if [ "$DOWNLOAD" = "" ] && [ ! -e "$FINALPATH" ]; then
+	echo "$NOW Trying to download new episode" >> $LOGFILE
+	if [ "$LATEST_DATE" = "$TODAY" ] || [ "$1" = "old" ]; then 
+		echo "$NOW Downloading new file from $LATEST_URL" >> $LOGFILE
+		wget -P /tmp/democracynow $LATEST_URL
+		if [ $? -ne 0 ]; then
+			echo "$NOW The file was not found in its supposed location." >> $LOGFILE
+		else 
+			echo "$NOW File has been downloaded, starting conversion." >> $LOGFILE
+		fi
+
+		for FILE in /tmp/democracynow/* 
+		do
+			avconv -i $FILE -an $AV_FILTER $AV_VCODEC $AV_FPS $AV_RESOLUTION $AV_ASPECT $TMP_VIDEO
+			avconv -i $FILE -vn $TMP_AUDIO_IN
+			r128gain --ffmpeg=/usr/lib64 --sox=/usr/lib64 --lame=/usr/lib64 --magick=/usr/lib64 --command='sox "${TRACK}" "${DN}/${BN}.wav" gain ${TGDB}' $TMP_AUDIO_IN -o /tmp/demotmp
+			avconv -i $TMP_VIDEO -i $TMP_AUDIO_OUT -vcodec copy $AV_ACODEC $AV_RATE $OUTPATH
+			if [ -f $OUTPATH ]; then
+                        	echo "$NOW $OUTNAME has been converted successfully." >> $LOGFILE
+	                else
+        	                echo "$NOW ERROR: There was a problem converting the file $OUTNAME." >> $LOGFILE
+	                fi
+			mv $OUTPATH $FINALPATH
+			if [ -f $FINALPATH ]; then
+                  		echo "$NOW $OUTNAME has been copied to Caspar successfully." >> $LOGFILE
+	                else
+	                	echo "$NOW ERROR: There was a problem moving the file $OUTNAME to Caspar." >> $LOGFILE
+	                fi
+		done
+		#echo "Konvertering och kopiering av Democracy Now är klar!" | mail -s "Dagens DN klar!" erik.jarl@oppnakanalenvaxjo.se
+		touch /nas-import/dagensDNklar
+		rm /tmp/democracynow/*
+	
+	if [ -f "$TMP_VIDEO" ]; then
+		rm $TMP_VIDEO
+	fi
+	if [ -f "$TMP_AUDIO_IN" ]; then
+		rm $TMP_AUDIO_IN
+	fi
+	if [ -f "$TMP_AUDIO_OUT" ]; then
+		rm $TMP_AUDIO_OUT
+	fi
+
+	else
+		echo "$NOW No news or file already downloaded" >> $LOGFILE
+	fi
+elif [ ! -e "$FINALPATH" ]; then
+	echo "$NOW File is already downloaded." >> $LOGFILE
+elif [ "$DOWNLOAD" = "" ]; then
+	echo "$NOW There is already a file downloaded in the tmp folder." >> $LOGFILE
+fi
+echo "---------------------------------------" >> $LOGFILE
+rm /tmp/podcast-stations-mpeg.xml
