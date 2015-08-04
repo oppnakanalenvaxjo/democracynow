@@ -83,7 +83,7 @@ if [ "$DOWNLOAD" = "" ] && [ ! -e "$FINALPATH" ]; then
 	                fi
 		done
 		#echo "Konvertering och kopiering av Democracy Now är klar!" | mail -s "Dagens DN klar!" erik.jarl@oppnakanalenvaxjo.se
-		touch /nas-import/dagensDNklar
+		touch /nas-import/DNklar
 		rm /tmp/democracynow/*
 	
 	if [ -f "$TMP_VIDEO" ]; then
@@ -99,10 +99,11 @@ if [ "$DOWNLOAD" = "" ] && [ ! -e "$FINALPATH" ]; then
 	else
 		echo "$NOW No news or file already downloaded" >> $LOGFILE
 	fi
-elif [ ! -e "$FINALPATH" ]; then
-	echo "$NOW File is already downloaded." >> $LOGFILE
-elif [ "$DOWNLOAD" = "" ]; then
+elif [ -e "$FINALPATH\$OUTNAME" ]; then
+	echo "$NOW File is already downloaded at $FINALPATH\$OUTNAME." >> $LOGFILE
+elif [ -n "$DOWNLOAD" ]; then
 	echo "$NOW There is already a file downloaded in the tmp folder." >> $LOGFILE
+else echo "$NOW There is something else." >> $LOGFILE
 fi
 echo "---------------------------------------" >> $LOGFILE
 rm /tmp/podcast-stations-mpeg.xml
