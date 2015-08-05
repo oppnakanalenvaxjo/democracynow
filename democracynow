@@ -20,6 +20,9 @@ LATEST_URL=${LATEST_URL#url=\"}
 LATEST_URL=${LATEST_URL%\"}
 TODAY=$(date +'%a, %d %b %Y')
 NAMEDATE=$(date +'%y%m%d')
+if [ "$1" = "old" ]; then
+	NAMEDATE=$(date -d "yesterday" +'%y%m%d')
+fi
 
 echo "today: $TODAY"
 echo "date: $LATEST_DATE"
@@ -54,14 +57,14 @@ LOGFILE="/share/dnlog.log"
 DOWNLOAD=$(ls /tmp/democracynow)
 
 if [ "$DOWNLOAD" = "" ] && [ ! -e "$FINALPATH" ]; then
-	echo "$NOW Trying to download new episode" >> $LOGFILE
+	echo "$(date +'%Y-%m-%d %H:%M:%S') Trying to download new episode" >> $LOGFILE
 	if [ "$LATEST_DATE" = "$TODAY" ] || [ "$1" = "old" ]; then 
-		echo "$NOW Downloading new file from $LATEST_URL" >> $LOGFILE
+		echo "$(date +'%Y-%m-%d %H:%M:%S') Downloading new file from $LATEST_URL" >> $LOGFILE
 		wget -P /tmp/democracynow $LATEST_URL
 		if [ $? -ne 0 ]; then
-			echo "$NOW The file was not found in its supposed location." >> $LOGFILE
+			echo "$(date +'%Y-%m-%d %H:%M:%S') The file was not found in its supposed location." >> $LOGFILE
 		else 
-			echo "$NOW File has been downloaded, starting conversion." >> $LOGFILE
+			echo "$(date +'%Y-%m-%d %H:%M:%S') File has been downloaded, starting conversion." >> $LOGFILE
 		fi
 
 		for FILE in /tmp/democracynow/* 
@@ -71,15 +74,15 @@ if [ "$DOWNLOAD" = "" ] && [ ! -e "$FINALPATH" ]; then
 			r128gain --ffmpeg=/usr/lib64 --sox=/usr/lib64 --lame=/usr/lib64 --magick=/usr/lib64 --command='sox "${TRACK}" "${DN}/${BN}.wav" gain ${TGDB}' $TMP_AUDIO_IN -o /tmp/demotmp
 			avconv -i $TMP_VIDEO -i $TMP_AUDIO_OUT -vcodec copy $AV_ACODEC $AV_RATE $OUTPATH
 			if [ -f $OUTPATH ]; then
-                        	echo "$NOW $OUTNAME has been converted successfully." >> $LOGFILE
+                        	echo "$(date +'%Y-%m-%d %H:%M:%S') $OUTNAME has been converted successfully." >> $LOGFILE
 	                else
-        	                echo "$NOW ERROR: There was a problem converting the file $OUTNAME." >> $LOGFILE
+        	                echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: There was a problem converting the file $OUTNAME." >> $LOGFILE
 	                fi
 			mv $OUTPATH $FINALPATH
 			if [ -f $FINALPATH ]; then
-                  		echo "$NOW $OUTNAME has been copied to Caspar successfully." >> $LOGFILE
+                  		echo "$(date +'%Y-%m-%d %H:%M:%S') $OUTNAME has been copied to Caspar successfully." >> $LOGFILE
 	                else
-	                	echo "$NOW ERROR: There was a problem moving the file $OUTNAME to Caspar." >> $LOGFILE
+	                	echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: There was a problem moving the file $OUTNAME to Caspar." >> $LOGFILE
 	                fi
 		done
 		#echo "Konvertering och kopiering av Democracy Now är klar!" | mail -s "Dagens DN klar!" erik.jarl@oppnakanalenvaxjo.se
@@ -97,13 +100,13 @@ if [ "$DOWNLOAD" = "" ] && [ ! -e "$FINALPATH" ]; then
 	fi
 
 	else
-		echo "$NOW No news or file already downloaded" >> $LOGFILE
+		echo "$(date +'%Y-%m-%d %H:%M:%S') No news or file already downloaded" >> $LOGFILE
 	fi
 elif [ -e "$FINALPATH\$OUTNAME" ]; then
-	echo "$NOW File is already downloaded at $FINALPATH\$OUTNAME." >> $LOGFILE
+	echo "$(date +'%Y-%m-%d %H:%M:%S') File is already downloaded at $FINALPATH\$OUTNAME." >> $LOGFILE
 elif [ -n "$DOWNLOAD" ]; then
-	echo "$NOW There is already a file downloaded in the tmp folder." >> $LOGFILE
-else echo "$NOW There is something else." >> $LOGFILE
+	echo "$(date +'%Y-%m-%d %H:%M:%S') There is already a file downloaded in the tmp folder." >> $LOGFILE
+else echo "$(date +'%Y-%m-%d %H:%M:%S') There is something else." >> $LOGFILE
 fi
 echo "---------------------------------------" >> $LOGFILE
 rm /tmp/podcast-stations-mpeg.xml
