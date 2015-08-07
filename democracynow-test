@@ -15,7 +15,8 @@ wget -P /tmp http://democracynow.org/podcast-stations-mpeg.xml
 XMLFEED=$(cat /tmp/podcast-stations-mpeg.xml)
 LATEST_DATE=$(echo "$XMLFEED" | grep -m 1 "pubDate")
 LATEST_DATE=${LATEST_DATE:9:16}
-LATEST_URL=$(echo "$XMLFEED" | grep -m 1 "enclosure" | grep -m 1 "enclosure" | sed -n 's/^.*\(url="[^"]*"\).*$/\1/p' )
+LATEST_URL=$(echo $XMLFEED | grep -m 1 "enclosure" | sed -n 's/^.*\(url="[^"]*"\).*$/\1/p' )
+echo "url: $LATEST_URL"
 LATEST_URL=${LATEST_URL#url=\"}
 LATEST_URL=${LATEST_URL%\"}
 TODAY=$(date +'%a, %d %b %Y')
